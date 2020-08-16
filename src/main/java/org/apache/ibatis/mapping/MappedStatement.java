@@ -34,7 +34,11 @@ import org.apache.ibatis.session.Configuration;
 public final class MappedStatement {
 
   private String resource;
+
+  //Mybatis全局配置
   private Configuration configuration;
+
+  //sql语句的唯一标识id
   private String id;
   private Integer fetchSize;
   private Integer timeout;
@@ -48,7 +52,11 @@ public final class MappedStatement {
   private boolean useCache;
   private boolean resultOrdered;
   private SqlCommandType sqlCommandType;
+
+  //主键生成器
   private KeyGenerator keyGenerator;
+
+
   private String[] keyProperties;
   private String[] keyColumns;
   private boolean hasNestedResultMaps;

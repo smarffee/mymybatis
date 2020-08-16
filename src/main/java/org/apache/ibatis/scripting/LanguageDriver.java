@@ -38,6 +38,8 @@ public interface LanguageDriver {
   ParameterHandler createParameterHandler(MappedStatement mappedStatement, Object parameterObject, BoundSql boundSql);
 
   /**
+   * 解析SQL语句 select|insert|update|delete
+   *
    * Creates an {@link SqlSource} that will hold the statement read from a mapper xml file. 
    * It is called during startup, when the mapped statement is read from a class or an xml file.
    * 

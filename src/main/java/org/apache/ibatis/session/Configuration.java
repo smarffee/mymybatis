@@ -93,9 +93,12 @@ import org.apache.ibatis.type.TypeHandlerRegistry;
 
 /**
  * @author Clinton Begin
+ * Mybatis配置
+ * 包好了Mybatis全局配置和mapper映射配置
  */
 public class Configuration {
 
+  //默认数据源环境
   protected Environment environment;
 
   protected boolean safeRowBoundsEnabled;
@@ -111,7 +114,11 @@ public class Configuration {
   protected boolean returnInstanceForEmptyRow;
 
   protected String logPrefix;
+
+  // 日志配置
   protected Class <? extends Log> logImpl;
+
+
   protected Class <? extends VFS> vfsImpl;
   protected LocalCacheScope localCacheScope = LocalCacheScope.SESSION;
   protected JdbcType jdbcTypeForNull = JdbcType.OTHER;
@@ -122,8 +129,16 @@ public class Configuration {
   protected AutoMappingBehavior autoMappingBehavior = AutoMappingBehavior.PARTIAL;
   protected AutoMappingUnknownColumnBehavior autoMappingUnknownColumnBehavior = AutoMappingUnknownColumnBehavior.NONE;
 
+  // 配置文件中 <properties resource="db.properties" /> properties 的属性
   protected Properties variables = new Properties();
   protected ReflectorFactory reflectorFactory = new DefaultReflectorFactory();
+
+  /**
+   * <objectFactory type="">
+   *         <property name="" value=""/>
+   *     </objectFactory>
+   * 工厂类
+   */
   protected ObjectFactory objectFactory = new DefaultObjectFactory();
   protected ObjectWrapperFactory objectWrapperFactory = new DefaultObjectWrapperFactory();
 
@@ -140,29 +155,57 @@ public class Configuration {
   protected Class<?> configurationFactory;
 
   protected final MapperRegistry mapperRegistry = new MapperRegistry(this);
+
+  // plugins 插件节点
   protected final InterceptorChain interceptorChain = new InterceptorChain();
+
   protected final TypeHandlerRegistry typeHandlerRegistry = new TypeHandlerRegistry();
   protected final TypeAliasRegistry typeAliasRegistry = new TypeAliasRegistry();
   protected final LanguageDriverRegistry languageRegistry = new LanguageDriverRegistry();
 
+  // 保存mapper文件中 sql语句解析结果
+  // key: 查询的唯一标识id； value：解析结果
   protected final Map<String, MappedStatement> mappedStatements = new StrictMap<MappedStatement>("Mapped Statements collection");
+
+  //mapper映射文件配置的二级缓存
+  //key:cache所在的mapper映射文件的命名空间名称
   protected final Map<String, Cache> caches = new StrictMap<Cache>("Caches collection");
+
+  //mapper映射文件配置的<ResultMap>
+  //key：<ResultMap>配置的id唯一标识属性；value：<ResultMap>解析结果
   protected final Map<String, ResultMap> resultMaps = new StrictMap<ResultMap>("Result Maps collection");
+
   protected final Map<String, ParameterMap> parameterMaps = new StrictMap<ParameterMap>("Parameter Maps collection");
+
+  //主键生成器映射
+  //key: id =  namespace + "." + 主键生成器所在sql的唯一标识id + !selectKey
+  // value: 主键生成器
   protected final Map<String, KeyGenerator> keyGenerators = new StrictMap<KeyGenerator>("Key Generators collection");
 
+  //已经解析过的mapper映射文件
   protected final Set<String> loadedResources = new HashSet<String>();
+
   protected final Map<String, XNode> sqlFragments = new StrictMap<XNode>("XML fragments parsed from previous mappers");
 
+  //解析select .... delete 等节点，构建Statement时发生IncompleteElementException异常
   protected final Collection<XMLStatementBuilder> incompleteStatements = new LinkedList<XMLStatementBuilder>();
+
+  //解析<cache-ref>节点，发生了IncompleteElementException异常
   protected final Collection<CacheRefResolver> incompleteCacheRefs = new LinkedList<CacheRefResolver>();
+
+  //解析resultMap时，发生了IncompleteElementException异常
   protected final Collection<ResultMapResolver> incompleteResultMaps = new LinkedList<ResultMapResolver>();
+
   protected final Collection<MethodResolver> incompleteMethods = new LinkedList<MethodResolver>();
 
   /*
    * A map holds cache-ref relationship. The key is the namespace that
    * references a cache bound to another namespace and the value is the
    * namespace which the actual cache is bound to.
+   * 保存了<cache-ref namespace="">节点的信息。二级缓存的共享关系
+   *
+   * key: 当前mapper的命名空间
+   * value: <cache-ref namespace=""> 配置的namespace值
    */
   protected final Map<String, String> cacheRefMap = new HashMap<String, String>();
 
@@ -299,11 +342,21 @@ public class Configuration {
     this.mapUnderscoreToCamelCase = mapUnderscoreToCamelCase;
   }
 
+  /**
+   * 将resource保存在已经解析过的集合中
+   * @param resource
+   */
   public void addLoadedResource(String resource) {
     loadedResources.add(resource);
   }
 
+  /**
+   * xml映射文件是否已经解析过
+   * @param resource xml映射文件
+   * @return
+   */
   public boolean isResourceLoaded(String resource) {
+    //如果包含，则说明已经解析过
     return loadedResources.contains(resource);
   }
 
@@ -733,11 +786,21 @@ public class Configuration {
     mapperRegistry.addMappers(packageName, superType);
   }
 
+  /**
+   * 注册包下的mapper文件
+   * @param packageName 包名
+   */
   public void addMappers(String packageName) {
     mapperRegistry.addMappers(packageName);
   }
 
+  /**
+   * 注册mapper接口
+   * @param type
+   * @param <T>
+   */
   public <T> void addMapper(Class<T> type) {
+    // 通过 MapperRegistry 绑定 mapper 类
     mapperRegistry.addMapper(type);
   }
 

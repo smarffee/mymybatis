@@ -47,6 +47,8 @@ public class XPathParser {
   private final Document document;
   private boolean validation;
   private EntityResolver entityResolver;
+
+  // 配置文件中 <properties resource="db.properties" /> properties 的属性
   private Properties variables;
   private XPath xpath;
 

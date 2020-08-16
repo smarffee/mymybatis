@@ -35,21 +35,49 @@ import org.apache.ibatis.session.Configuration;
 
 /**
  * @author Clinton Begin
+ *
+ *  封装了mapper映射文件中 resultMap 节点解析结果
+ *  结果集的配置解析结果
  */
 public class ResultMap {
+
+  //Mybatis全局配置
   private Configuration configuration;
 
+  //<ResultMap>配置的id，表示结果集的唯一标识
   private String id;
+
+  //结果集对应的JavaBean
   private Class<?> type;
+
+  //<ResultMap>子节点解析结果集合，表示每一个属性的配置。所有的属性配置
   private List<ResultMapping> resultMappings;
+
+  //结果集主键字段配置。用于存储 <id> 和 <idArg> 节点对应的 ResultMapping 对象
   private List<ResultMapping> idResultMappings;
+
+  //有参构造器实例化对象需要的字段。用于存储 <idArgs> 和 <arg> 节点对应的 ResultMapping 对象
   private List<ResultMapping> constructorResultMappings;
+
+  //JavaBean属性配置（非有参构造器需要的字段）。用于存储 <id> 和 <result> 节点对应的 ResultMapping 对象
   private List<ResultMapping> propertyResultMappings;
+
+  //查询结果集字段名。用于存储 <id>、<result>、<idArg>、<arg> 节点 column 属性
   private Set<String> mappedColumns;
+
+  //JavaBean属性名。用于存储 <id> 和 <result> 节点的 property 属性，或 <idArgs> 和 <arg>节点的 name 属性
   private Set<String> mappedProperties;
+
+  //<ResultMap>节点的子节点<discriminator> 节点解析结果
   private Discriminator discriminator;
+
+  //是否有嵌套子查询结果集ResultMap
   private boolean hasNestedResultMaps;
+
+  //是否有嵌套子查询
   private boolean hasNestedQueries;
+
+  //<ResultMap>节点中autoMapping属性值
   private Boolean autoMapping;
 
   private ResultMap() {
@@ -85,53 +113,83 @@ public class ResultMap {
       if (resultMap.id == null) {
         throw new IllegalArgumentException("ResultMaps must have an id");
       }
+
       resultMap.mappedColumns = new HashSet<String>();
       resultMap.mappedProperties = new HashSet<String>();
       resultMap.idResultMappings = new ArrayList<ResultMapping>();
       resultMap.constructorResultMappings = new ArrayList<ResultMapping>();
       resultMap.propertyResultMappings = new ArrayList<ResultMapping>();
+
+      //有参构造器实例化对象时构造器字段名
       final List<String> constructorArgNames = new ArrayList<String>();
+
       for (ResultMapping resultMapping : resultMap.resultMappings) {
+        // 检测 <association> 或 <collection> 节点
+        // 是否包含 select 和 resultMap 属性
         resultMap.hasNestedQueries = resultMap.hasNestedQueries || resultMapping.getNestedQueryId() != null;
-        resultMap.hasNestedResultMaps = resultMap.hasNestedResultMaps || (resultMapping.getNestedResultMapId() != null && resultMapping.getResultSet() == null);
+        resultMap.hasNestedResultMaps = resultMap.hasNestedResultMaps ||
+                (resultMapping.getNestedResultMapId() != null && resultMapping.getResultSet() == null);
+
         final String column = resultMapping.getColumn();
+
+        //添加结果集字段名
         if (column != null) {
+          // 将 colum 转换成大写，并添加到 mappedColumns 集合中
           resultMap.mappedColumns.add(column.toUpperCase(Locale.ENGLISH));
+
         } else if (resultMapping.isCompositeResult()) {
+          /**
+           * {@link ResultMapping#composites}
+           */
           for (ResultMapping compositeResultMapping : resultMapping.getComposites()) {
             final String compositeColumn = compositeResultMapping.getColumn();
             if (compositeColumn != null) {
+              //添加结果集字段名
               resultMap.mappedColumns.add(compositeColumn.toUpperCase(Locale.ENGLISH));
             }
           }
         }
+
+        //添加JavaBean属性名
         final String property = resultMapping.getProperty();
         if(property != null) {
           resultMap.mappedProperties.add(property);
         }
+
         if (resultMapping.getFlags().contains(ResultFlag.CONSTRUCTOR)) {
+          //如果是有参构造器实例化对象
           resultMap.constructorResultMappings.add(resultMapping);
           if (resultMapping.getProperty() != null) {
             constructorArgNames.add(resultMapping.getProperty());
           }
         } else {
+          //保存非有参构造器需要的字段
           resultMap.propertyResultMappings.add(resultMapping);
         }
+
+        //保存结果集主键字段配置
         if (resultMapping.getFlags().contains(ResultFlag.ID)) {
           resultMap.idResultMappings.add(resultMapping);
         }
       }
+
       if (resultMap.idResultMappings.isEmpty()) {
         resultMap.idResultMappings.addAll(resultMap.resultMappings);
       }
+
+      //如果是用有参构造器实例化对象
       if (!constructorArgNames.isEmpty()) {
+        //获取构造方法参数列表，篇幅原因，这个方法不分析了
         final List<String> actualArgNames = argNamesOfMatchingConstructor(constructorArgNames);
+
         if (actualArgNames == null) {
           throw new BuilderException("Error in result map '" + resultMap.id
               + "'. Failed to find a constructor in '"
               + resultMap.getType().getName() + "' by arg names " + constructorArgNames
               + ". There might be more info in debug log.");
         }
+
+        // 对 constructorResultMappings 按照构造方法参数列表的顺序进行排序
         Collections.sort(resultMap.constructorResultMappings, new Comparator<ResultMapping>() {
           @Override
           public int compare(ResultMapping o1, ResultMapping o2) {
@@ -141,7 +199,9 @@ public class ResultMap {
           }
         });
       }
+
       // lock down collections
+      // 将以下这些集合变为不可修改集合
       resultMap.resultMappings = Collections.unmodifiableList(resultMap.resultMappings);
       resultMap.idResultMappings = Collections.unmodifiableList(resultMap.idResultMappings);
       resultMap.constructorResultMappings = Collections.unmodifiableList(resultMap.constructorResultMappings);

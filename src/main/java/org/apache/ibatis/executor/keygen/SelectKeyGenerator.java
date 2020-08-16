@@ -33,7 +33,10 @@ import org.apache.ibatis.session.RowBounds;
 public class SelectKeyGenerator implements KeyGenerator {
   
   public static final String SELECT_KEY_SUFFIX = "!selectKey";
+
   private final boolean executeBefore;
+
+  //生成主键的sql的statement
   private final MappedStatement keyStatement;
 
   public SelectKeyGenerator(MappedStatement keyStatement, boolean executeBefore) {

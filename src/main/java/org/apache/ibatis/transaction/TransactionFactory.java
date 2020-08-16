@@ -25,6 +25,8 @@ import org.apache.ibatis.session.TransactionIsolationLevel;
 /**
  * Creates {@link Transaction} instances.
  *
+ * 事务工厂
+ *
  * @author Clinton Begin
  */
 public interface TransactionFactory {

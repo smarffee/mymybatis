@@ -30,10 +30,15 @@ import java.util.Set;
  * @author Clinton Begin
  * @author Eduardo Macarron
  * @author Lasse Voss
+ *
+ * Mapper接口注册器
  */
 public class MapperRegistry {
 
   private final Configuration config;
+
+  //保存mapper接口注册信息
+  //key:Mapper接口；value:Mapper接口代理对象
   private final Map<Class<?>, MapperProxyFactory<?>> knownMappers = new HashMap<Class<?>, MapperProxyFactory<?>>();
 
   public MapperRegistry(Configuration config) {
@@ -57,20 +62,37 @@ public class MapperRegistry {
     return knownMappers.containsKey(type);
   }
 
+  /**
+   * 注册mapper映射接口
+   * @param type
+   * @param <T>
+   */
   public <T> void addMapper(Class<T> type) {
     if (type.isInterface()) {
+      //如果已经注册过，则抛异常
       if (hasMapper(type)) {
         throw new BindingException("Type " + type + " is already known to the MapperRegistry.");
       }
+
+      //是否加载完标识
       boolean loadCompleted = false;
+
       try {
+        // 将 type 和 MapperProxyFactory 进行绑定，
+        // MapperProxyFactory 可为 mapper 接口生成代理类
         knownMappers.put(type, new MapperProxyFactory<T>(type));
+
         // It's important that the type is added before the parser is run
         // otherwise the binding may automatically be attempted by the
         // mapper parser. If the type is already known, it won't try.
+        // 创建注解解析器。在 MyBatis 中，有 XML 和 注解两种配置方式可选
         MapperAnnotationBuilder parser = new MapperAnnotationBuilder(config, type);
+        // 解析注解中的信息
         parser.parse();
+
+        //加载完毕
         loadCompleted = true;
+
       } finally {
         if (!loadCompleted) {
           knownMappers.remove(type);
@@ -87,6 +109,7 @@ public class MapperRegistry {
   }
 
   /**
+   * 注册包下的mapper文件
    * @since 3.2.2
    */
   public void addMappers(String packageName, Class<?> superType) {
@@ -99,6 +122,7 @@ public class MapperRegistry {
   }
 
   /**
+   * 注册包下的mapper文件
    * @since 3.2.2
    */
   public void addMappers(String packageName) {

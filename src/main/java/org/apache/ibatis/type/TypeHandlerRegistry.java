@@ -51,6 +51,9 @@ import org.apache.ibatis.reflection.Jdk;
 /**
  * @author Clinton Begin
  * @author Kazuki Shimizu
+ *
+ * jdbcType 和 javaType 转换器 注册器
+ *
  */
 public final class TypeHandlerRegistry {
 

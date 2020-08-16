@@ -24,10 +24,13 @@ import org.apache.ibatis.session.Configuration;
 
 /**
  * @author Clinton Begin
+ * 动态sql语句
  */
 public class DynamicSqlSource implements SqlSource {
 
   private final Configuration configuration;
+
+  //SqlNode 封装了SQL语句的解析结果
   private final SqlNode rootSqlNode;
 
   public DynamicSqlSource(Configuration configuration, SqlNode rootSqlNode) {

@@ -27,21 +27,46 @@ import org.apache.ibatis.type.TypeHandlerRegistry;
 
 /**
  * @author Clinton Begin
+ *
+ * resultMap的子节点<id>、<result>等解析结果
+ * 当个字段对应的配置解析结果
  */
 public class ResultMapping {
 
   private Configuration configuration;
+
+  //Javabean中的属性名
   private String property;
+
+  //Javabean的属性对应的字段名
   private String column;
+
+  //Javabean中的属性类型
   private Class<?> javaType;
+
+  //Javabean的属性对应的字段的类型
   private JdbcType jdbcType;
+
+  //类型处理器
   private TypeHandler<?> typeHandler;
+
+  //嵌套子查询结果集Id
   private String nestedResultMapId;
+
+  //嵌套子查询id
   private String nestedQueryId;
+
   private Set<String> notNullColumns;
   private String columnPrefix;
+
+  //节点类型
   private List<ResultFlag> flags;
+
+  //复合结果。
+  // column = {property1=column1, property2=column2} 的情况，
+  // 这里会将 column 拆分成多个 ResultMapping
   private List<ResultMapping> composites;
+
   private String resultSet;
   private String foreignColumn;
   private boolean lazy;
@@ -134,8 +159,11 @@ public class ResultMapping {
     
     public ResultMapping build() {
       // lock down collections
+      // 将 flags 和 composites 两个集合变为不可修改集合
       resultMapping.flags = Collections.unmodifiableList(resultMapping.flags);
       resultMapping.composites = Collections.unmodifiableList(resultMapping.composites);
+
+      // 从 TypeHandlerRegistry 中获取相应 TypeHandler
       resolveTypeHandler();
       validate();
       return resultMapping;
