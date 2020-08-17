@@ -164,7 +164,7 @@ public class Configuration {
   protected final LanguageDriverRegistry languageRegistry = new LanguageDriverRegistry();
 
   // 保存mapper文件中 sql语句解析结果
-  // key: 查询的唯一标识id； value：解析结果
+  // key: 命名空间+查询的唯一标识id； value：解析结果
   protected final Map<String, MappedStatement> mappedStatements = new StrictMap<MappedStatement>("Mapped Statements collection");
 
   //mapper映射文件配置的二级缓存
@@ -607,8 +607,13 @@ public class Configuration {
     return resultSetHandler;
   }
 
-  public StatementHandler newStatementHandler(Executor executor, MappedStatement mappedStatement, Object parameterObject, RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql) {
+  //创建 StatementHandler
+  public StatementHandler newStatementHandler(Executor executor, MappedStatement mappedStatement,
+                                              Object parameterObject, RowBounds rowBounds,
+                                              ResultHandler resultHandler, BoundSql boundSql) {
+    // 创建具有路由功能的 StatementHandler
     StatementHandler statementHandler = new RoutingStatementHandler(executor, mappedStatement, parameterObject, rowBounds, resultHandler, boundSql);
+    // 应用插件到 StatementHandler 上
     statementHandler = (StatementHandler) interceptorChain.pluginAll(statementHandler);
     return statementHandler;
   }
@@ -804,6 +809,14 @@ public class Configuration {
     mapperRegistry.addMapper(type);
   }
 
+  /**
+   * 根据接口Class获取接口的代理类
+   *
+   * @param type
+   * @param sqlSession
+   * @param <T>
+   * @return
+   */
   public <T> T getMapper(Class<T> type, SqlSession sqlSession) {
     return mapperRegistry.getMapper(type, sqlSession);
   }

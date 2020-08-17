@@ -24,13 +24,17 @@ import org.apache.ibatis.session.Configuration;
 
 /**
  * @author Clinton Begin
- * 动态sql语句
+ *
+ * 动态sql片段树
  */
 public class DynamicSqlSource implements SqlSource {
 
   private final Configuration configuration;
 
-  //SqlNode 封装了SQL语句的解析结果
+  /**
+   * SqlNode 封装了SQL语句的解析结果
+   * {@link MixedSqlNode}
+   */
   private final SqlNode rootSqlNode;
 
   public DynamicSqlSource(Configuration configuration, SqlNode rootSqlNode) {
@@ -40,15 +44,26 @@ public class DynamicSqlSource implements SqlSource {
 
   @Override
   public BoundSql getBoundSql(Object parameterObject) {
+    // 1.创建 DynamicContext
     DynamicContext context = new DynamicContext(configuration, parameterObject);
+
+    // 2.解析 SQL 片段，并将解析结果存储到 DynamicContext 中
     rootSqlNode.apply(context);
+
     SqlSourceBuilder sqlSourceParser = new SqlSourceBuilder(configuration);
     Class<?> parameterType = parameterObject == null ? Object.class : parameterObject.getClass();
+
+    // 3.构建 StaticSqlSource，在此过程中将 sql 语句中的占位符 #{} 替换为问号 ?，并为每个占位符构建相应的 ParameterMapping
     SqlSource sqlSource = sqlSourceParser.parse(context.getSql(), parameterType, context.getBindings());
+
+    // 4.调用 StaticSqlSource 的 getBoundSql 获取 BoundSql
     BoundSql boundSql = sqlSource.getBoundSql(parameterObject);
+
+    // 5.将 DynamicContext 的 ContextMap 中的内容拷贝到 BoundSql 中
     for (Map.Entry<String, Object> entry : context.getBindings().entrySet()) {
       boundSql.setAdditionalParameter(entry.getKey(), entry.getValue());
     }
+
     return boundSql;
   }
 

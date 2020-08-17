@@ -52,10 +52,14 @@ public abstract class BaseExecutor implements Executor {
   private static final Log log = LogFactory.getLog(BaseExecutor.class);
 
   protected Transaction transaction;
+
   protected Executor wrapper;
 
   protected ConcurrentLinkedQueue<DeferredLoad> deferredLoads;
+
+  //一级缓存
   protected PerpetualCache localCache;
+
   protected PerpetualCache localOutputParameterCache;
   protected Configuration configuration;
 
@@ -138,27 +142,41 @@ public abstract class BaseExecutor implements Executor {
 
   @SuppressWarnings("unchecked")
   @Override
-  public <E> List<E> query(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler, CacheKey key, BoundSql boundSql) throws SQLException {
+  public <E> List<E> query(MappedStatement ms, Object parameter,
+                           RowBounds rowBounds, ResultHandler resultHandler,
+                           CacheKey key, BoundSql boundSql) throws SQLException {
+
     ErrorContext.instance().resource(ms.getResource()).activity("executing a query").object(ms.getId());
     if (closed) {
       throw new ExecutorException("Executor was closed.");
     }
+
     if (queryStack == 0 && ms.isFlushCacheRequired()) {
       clearLocalCache();
     }
+
     List<E> list;
     try {
       queryStack++;
+
+      // 从一级缓存中获取缓存项
       list = resultHandler == null ? (List<E>) localCache.getObject(key) : null;
+
       if (list != null) {
+        // 存储过程相关处理逻辑
         handleLocallyCachedOutputParameters(ms, key, parameter, boundSql);
       } else {
+        // 一级缓存未命中，则从数据库中查询
         list = queryFromDatabase(ms, parameter, rowBounds, resultHandler, key, boundSql);
       }
+
     } finally {
       queryStack--;
     }
+
+
     if (queryStack == 0) {
+      // 从一级缓存中延迟加载嵌套查询结果
       for (DeferredLoad deferredLoad : deferredLoads) {
         deferredLoad.load();
       }
@@ -279,6 +297,7 @@ public abstract class BaseExecutor implements Executor {
   protected abstract <E> Cursor<E> doQueryCursor(MappedStatement ms, Object parameter, RowBounds rowBounds, BoundSql boundSql)
       throws SQLException;
 
+  // 关闭 Statement
   protected void closeStatement(Statement statement) {
     if (statement != null) {
       try {
@@ -319,21 +338,35 @@ public abstract class BaseExecutor implements Executor {
     }
   }
 
-  private <E> List<E> queryFromDatabase(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler, CacheKey key, BoundSql boundSql) throws SQLException {
+  // 一级缓存未命中，则从数据库中查询
+  private <E> List<E> queryFromDatabase(
+          MappedStatement ms, Object parameter, RowBounds rowBounds,
+          ResultHandler resultHandler, CacheKey key, BoundSql boundSql) throws SQLException {
+
     List<E> list;
+
+    // 向缓存中存储一个占位符
     localCache.putObject(key, EXECUTION_PLACEHOLDER);
+
     try {
+      // 调用 doQuery 进行查询
       list = doQuery(ms, parameter, rowBounds, resultHandler, boundSql);
     } finally {
+      // 移除占位符
       localCache.removeObject(key);
     }
+
+    // 缓存查询结果
     localCache.putObject(key, list);
+
     if (ms.getStatementType() == StatementType.CALLABLE) {
       localOutputParameterCache.putObject(key, parameter);
     }
+
     return list;
   }
 
+  // 获取数据库连接
   protected Connection getConnection(Log statementLog) throws SQLException {
     Connection connection = transaction.getConnection();
     if (statementLog.isDebugEnabled()) {
@@ -347,7 +380,8 @@ public abstract class BaseExecutor implements Executor {
   public void setExecutorWrapper(Executor wrapper) {
     this.wrapper = wrapper;
   }
-  
+
+  //用于延迟加载
   private static class DeferredLoad {
 
     private final MetaObject resultObject;

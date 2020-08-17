@@ -40,9 +40,13 @@ public class SqlSourceBuilder extends BaseBuilder {
   }
 
   public SqlSource parse(String originalSql, Class<?> parameterType, Map<String, Object> additionalParameters) {
+    // 创建 #{} 占位符处理器
     ParameterMappingTokenHandler handler = new ParameterMappingTokenHandler(configuration, parameterType, additionalParameters);
+    // 创建 #{} 占位符解析器
     GenericTokenParser parser = new GenericTokenParser("#{", "}", handler);
+    // 解析 #{} 占位符，并返回解析结果
     String sql = parser.parse(originalSql);
+    // 封装解析结果到 StaticSqlSource 中，并返回
     return new StaticSqlSource(configuration, sql, handler.getParameterMappings());
   }
 
@@ -62,43 +66,110 @@ public class SqlSourceBuilder extends BaseBuilder {
       return parameterMappings;
     }
 
+
+    //GenericTokenParser 负责将#{}占位符中的内容抽取出来，并将抽取出的内容传给 handleToken 方法。
+    //handleToken 方法负责将传入的参数解析成对应的 ParameterMapping 对象，
+    //这步操作由 buildParameterMapping 方法完成。
     @Override
     public String handleToken(String content) {
+      // 获取 content 的对应的 ParameterMapping
       parameterMappings.add(buildParameterMapping(content));
+      // 返回 ?
       return "?";
     }
 
+
+
     private ParameterMapping buildParameterMapping(String content) {
+
+      /*
+       * 1.解析content，内部依赖 ParameterExpression 对字符串进行解析。
+       *
+       * 将 #{xxx} 占位符中的内容解析成 Map。
+       * 大家可能很好奇一个普通的字符串是怎么解析成 Map 的，举例说明一下。如下：
+       *
+       * #{age,javaType=int,jdbcType=NUMERIC,typeHandler=MyTypeHandler}
+       *
+       * 上面占位符中的内容最终会被解析成如下的结果：
+       *
+       * {
+       * "property": "age",
+       * "typeHandler": "MyTypeHandler",
+       * "jdbcType": "NUMERIC",
+       * "javaType": "int"
+       * }
+       */
       Map<String, String> propertiesMap = parseParameterMapping(content);
+
       String property = propertiesMap.get("property");
       Class<?> propertyType;
+
+      // 2. 解析 propertyType
       if (metaParameters.hasGetter(property)) { // issue #448 get type from additional params
+
+        // metaParameters 为 DynamicContext 成员变量 bindings 的元信息对象
         propertyType = metaParameters.getGetterType(property);
+
       } else if (typeHandlerRegistry.hasTypeHandler(parameterType)) {
+
+        /*
+         * parameterType 是运行时参数的类型。
+         * 如果用户传入的是单个参数，比如 Article 对象，此时 parameterType 为 Article.class。
+         * 如果用户传入的多个参数，比如 [id = 1, author = "coolblog"]，
+         * MyBatis 会使用 ParamMap 封装这些参数，此时 parameterType 为 ParamMap.class。
+         * 如果 parameterType 有相应的 TypeHandler，这里则把 parameterType 设为 propertyType
+         */
         propertyType = parameterType;
+
       } else if (JdbcType.CURSOR.name().equals(propertiesMap.get("jdbcType"))) {
+
         propertyType = java.sql.ResultSet.class;
+
       } else if (property == null || Map.class.isAssignableFrom(parameterType)) {
+
+        // 如果 property 为空，或 parameterType 是 Map 类型，则将 propertyType 设为 Object.class
         propertyType = Object.class;
+
       } else {
+
+        // 代码逻辑走到此分支中，表明 parameterType 是一个自定义的类，比如 Article，此时为该类创建一个元信息对象
         MetaClass metaClass = MetaClass.forClass(parameterType, configuration.getReflectorFactory());
+
+        // 检测参数对象有没有与 property 相对应的 getter 方法
         if (metaClass.hasGetter(property)) {
+          // 获取成员变量的类型
           propertyType = metaClass.getGetterType(property);
         } else {
           propertyType = Object.class;
         }
+
       }
+
+      // -------------------------- 分割线 ---------------------------
+
+      // 3.构建 ParameterMapping 对象
       ParameterMapping.Builder builder = new ParameterMapping.Builder(configuration, property, propertyType);
+
+      // 将 propertyType 赋值给 javaType
       Class<?> javaType = propertyType;
       String typeHandlerAlias = null;
+
+      // 遍历 propertiesMap
       for (Map.Entry<String, String> entry : propertiesMap.entrySet()) {
         String name = entry.getKey();
         String value = entry.getValue();
+
         if ("javaType".equals(name)) {
+
+          // 如果用户明确配置了 javaType，则以用户的配置为准
           javaType = resolveClass(value);
           builder.javaType(javaType);
+
         } else if ("jdbcType".equals(name)) {
+
+          // 解析 jdbcType
           builder.jdbcType(resolveJdbcType(value));
+
         } else if ("mode".equals(name)) {
           builder.mode(resolveParameterMode(value));
         } else if ("numericScale".equals(name)) {
@@ -117,9 +188,13 @@ public class SqlSourceBuilder extends BaseBuilder {
           throw new BuilderException("An invalid property '" + name + "' was found in mapping #{" + content + "}.  Valid properties are " + parameterProperties);
         }
       }
+
       if (typeHandlerAlias != null) {
+        // 解析 TypeHandler
         builder.typeHandler(resolveTypeHandler(javaType, typeHandlerAlias));
       }
+
+      // 构建 ParameterMapping 对象
       return builder.build();
     }
 

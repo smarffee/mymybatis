@@ -26,10 +26,13 @@ import org.apache.ibatis.executor.keygen.NoKeyGenerator;
 import org.apache.ibatis.logging.Log;
 import org.apache.ibatis.logging.LogFactory;
 import org.apache.ibatis.scripting.LanguageDriver;
+import org.apache.ibatis.scripting.xmltags.DynamicSqlSource;
 import org.apache.ibatis.session.Configuration;
 
 /**
  * @author Clinton Begin
+ *
+ * Mapper映射文件中，每一个 select|insert|update|delete 都会解析成一个 MappedStatement
  */
 public final class MappedStatement {
 
@@ -38,30 +41,43 @@ public final class MappedStatement {
   //Mybatis全局配置
   private Configuration configuration;
 
-  //sql语句的唯一标识id
+  //namespace + sql语句的唯一标识id
   private String id;
+
   private Integer fetchSize;
   private Integer timeout;
   private StatementType statementType;
   private ResultSetType resultSetType;
+
+  /**
+   * mapper文件中配置的sql语句被解析完以后生成的sql片段树
+   * {@link DynamicSqlSource}
+   */
   private SqlSource sqlSource;
+
+  //二级缓存
   private Cache cache;
+
   private ParameterMap parameterMap;
   private List<ResultMap> resultMaps;
   private boolean flushCacheRequired;
   private boolean useCache;
   private boolean resultOrdered;
+
+  //查询类型 select? insert? update? delete?
   private SqlCommandType sqlCommandType;
 
   //主键生成器
   private KeyGenerator keyGenerator;
 
-
   private String[] keyProperties;
   private String[] keyColumns;
   private boolean hasNestedResultMaps;
   private String databaseId;
+
+  //创建java.sql.Statement时log
   private Log statementLog;
+
   private LanguageDriver lang;
   private String[] resultSets;
 
@@ -295,11 +311,17 @@ public final class MappedStatement {
   public String[] getResulSets() {
     return resultSets;
   }
-  
+
+  //获取 BoundSql
   public BoundSql getBoundSql(Object parameterObject) {
+    // 调用 sqlSource 的 getBoundSql 获取 BoundSql
     BoundSql boundSql = sqlSource.getBoundSql(parameterObject);
+
     List<ParameterMapping> parameterMappings = boundSql.getParameterMappings();
     if (parameterMappings == null || parameterMappings.isEmpty()) {
+      // 创建新的 BoundSql，这里的 parameterMap 是 ParameterMap 类型。
+      // 由 <ParameterMap> 节点进行配置，该节点已经废弃，不推荐使用。
+      // 默认情况下，parameterMap.getParameterMappings() 返回空集合
       boundSql = new BoundSql(configuration, boundSql.getSql(), parameterMap.getParameterMappings(), parameterObject);
     }
 

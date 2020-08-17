@@ -80,12 +80,16 @@ public abstract class BaseStatementHandler implements StatementHandler {
     return parameterHandler;
   }
 
+  //创建java.sql.Statement
   @Override
   public Statement prepare(Connection connection, Integer transactionTimeout) throws SQLException {
     ErrorContext.instance().sql(boundSql.getSql());
     Statement statement = null;
     try {
+      // 创建 Statement
       statement = instantiateStatement(connection);
+
+      // 设置超时和 FetchSize
       setStatementTimeout(statement, transactionTimeout);
       setFetchSize(statement);
       return statement;
@@ -98,6 +102,7 @@ public abstract class BaseStatementHandler implements StatementHandler {
     }
   }
 
+  // 创建 Statement
   protected abstract Statement instantiateStatement(Connection connection) throws SQLException;
 
   protected void setStatementTimeout(Statement stmt, Integer transactionTimeout) throws SQLException {

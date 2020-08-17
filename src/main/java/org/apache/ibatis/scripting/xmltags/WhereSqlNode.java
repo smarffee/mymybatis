@@ -22,11 +22,14 @@ import org.apache.ibatis.session.Configuration;
 
 /**
  * @author Clinton Begin
+ *
+ * WhereSqlNode 对应于<where>节点
  */
 public class WhereSqlNode extends TrimSqlNode {
 
   private static List<String> prefixList = Arrays.asList("AND ","OR ","AND\n", "OR\n", "AND\r", "OR\r", "AND\t", "OR\t");
 
+  //在 MyBatis 中，WhereSqlNode 和 SetSqlNode 都是基于 TrimSqlNode 实现的，所以代码看起来很简单
   public WhereSqlNode(Configuration configuration, SqlNode contents) {
     super(configuration, contents, "WHERE", prefixList, null, null);
   }

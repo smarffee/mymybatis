@@ -60,7 +60,9 @@ public class PreparedStatementHandler extends BaseStatementHandler {
   @Override
   public <E> List<E> query(Statement statement, ResultHandler resultHandler) throws SQLException {
     PreparedStatement ps = (PreparedStatement) statement;
+    // 执行 SQL
     ps.execute();
+    // 处理执行结果
     return resultSetHandler.<E> handleResultSets(ps);
   }
 
@@ -71,9 +73,11 @@ public class PreparedStatementHandler extends BaseStatementHandler {
     return resultSetHandler.<E> handleCursorResultSets(ps);
   }
 
+  // 创建 Statement
   @Override
   protected Statement instantiateStatement(Connection connection) throws SQLException {
     String sql = boundSql.getSql();
+    // 根据条件调用不同的 prepareStatement 方法创建 PreparedStatement
     if (mappedStatement.getKeyGenerator() instanceof Jdbc3KeyGenerator) {
       String[] keyColumnNames = mappedStatement.getKeyColumns();
       if (keyColumnNames == null) {
@@ -88,8 +92,10 @@ public class PreparedStatementHandler extends BaseStatementHandler {
     }
   }
 
+  // 为 Statement 设置 IN 参数
   @Override
   public void parameterize(Statement statement) throws SQLException {
+    // 通过参数处理器 ParameterHandler 设置运行时参数到 PreparedStatement 中
     parameterHandler.setParameters((PreparedStatement) statement);
   }
 

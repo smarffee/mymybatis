@@ -39,56 +39,102 @@ import java.util.*;
  * @author Clinton Begin
  * @author Eduardo Macarron
  * @author Lasse Voss
+ *
+ * Mapper接口方法的实际方法体，调用Mapper对象的invoke方法，
+ * 最终会调用本类中{@link MapperMethod#execute(org.apache.ibatis.session.SqlSession, java.lang.Object[])}方法取真正的执行sql
  */
 public class MapperMethod {
 
+  //该对象包含一些和 SQL 相关的信息，包含sql的唯一标识 以及 sql的类型 select? insert? update? delete?
   private final SqlCommand command;
+
+  //该对象包含了被拦截方法的一些信息。比如目标方法的返回类型，目标方法的参数列表信息等。
   private final MethodSignature method;
 
+  /**
+   * @param mapperInterface Mapper接口的Class
+   * @param method Mapper接口中的方法
+   * @param config Mybatis全局配置文件
+   */
   public MapperMethod(Class<?> mapperInterface, Method method, Configuration config) {
+    // 创建 SqlCommand 对象，该对象包含一些和 SQL 相关的信息
     this.command = new SqlCommand(config, mapperInterface, method);
+
+    // 创建 MethodSignature 对象，该对象包含了被拦截方法的一些信息。比如目标方法的返回类型，目标方法的参数列表信息等。
     this.method = new MethodSignature(config, mapperInterface, method);
   }
 
+  /**
+   * Mapper代理类的实际方法体，真正的取执行sql
+   *
+   * @param sqlSession
+   * @param args
+   * @return
+   */
   public Object execute(SqlSession sqlSession, Object[] args) {
     Object result;
+    // 根据 SQL 类型执行相应的数据库操作
     switch (command.getType()) {
       case INSERT: {
-      Object param = method.convertArgsToSqlCommandParam(args);
+        // 对用户传入的参数进行转换，下同
+        Object param = method.convertArgsToSqlCommandParam(args);
+        // 执行插入操作，rowCountResult 方法用于处理返回值
         result = rowCountResult(sqlSession.insert(command.getName(), param));
         break;
       }
       case UPDATE: {
         Object param = method.convertArgsToSqlCommandParam(args);
+        // 执行更新操作
         result = rowCountResult(sqlSession.update(command.getName(), param));
         break;
       }
       case DELETE: {
         Object param = method.convertArgsToSqlCommandParam(args);
+        // 执行删除操作
         result = rowCountResult(sqlSession.delete(command.getName(), param));
         break;
       }
       case SELECT:
+        // 根据目标方法的返回类型进行相应的查询操作
         if (method.returnsVoid() && method.hasResultHandler()) {
+
+          // 如果方法返回值为 void，但参数列表中包含 ResultHandler，
+          // 表明使用者想通过 ResultHandler 的方式获取查询结果，
+          // 而非通过返回值获取结果
           executeWithResultHandler(sqlSession, args);
           result = null;
+
         } else if (method.returnsMany()) {
+
+          // 执行查询操作，并返回多个结果
           result = executeForMany(sqlSession, args);
+
         } else if (method.returnsMap()) {
+
+          // 执行查询操作，并将结果封装在 Map 中返回
           result = executeForMap(sqlSession, args);
+
         } else if (method.returnsCursor()) {
+
+          // 执行查询操作，并返回一个 Cursor 对象
           result = executeForCursor(sqlSession, args);
+
         } else {
+
           Object param = method.convertArgsToSqlCommandParam(args);
+          // 执行查询操作，并返回一个结果
           result = sqlSession.selectOne(command.getName(), param);
         }
         break;
       case FLUSH:
+        // 执行刷新操作
         result = sqlSession.flushStatements();
         break;
       default:
         throw new BindingException("Unknown execution method for: " + command.getName());
     }
+
+    // 如果方法的返回值为基本类型，而返回值却为 null，此种情况下应抛出异常
     if (result == null && method.getReturnType().isPrimitive() && !method.returnsVoid()) {
       throw new BindingException("Mapper method '" + command.getName() 
           + " attempted to return null from a method with a primitive return type (" + method.getReturnType() + ").");
@@ -208,25 +254,54 @@ public class MapperMethod {
 
   }
 
+  // 该对象包含一些和 SQL 相关的信息
   public static class SqlCommand {
 
+    /**
+     * sql语句唯一标识
+     * {@link MappedStatement#id}
+     */
     private final String name;
+
+    /**
+     * sql语句的类型
+     * {@link MappedStatement#sqlCommandType}
+     */
     private final SqlCommandType type;
 
+    /**
+     * SqlCommand 的构造方法主要用于初始化它的两个成员变量
+     * @param configuration
+     * @param mapperInterface
+     * @param method
+     */
     public SqlCommand(Configuration configuration, Class<?> mapperInterface, Method method) {
+      //获取方法名称
       final String methodName = method.getName();
+      //获取声明方法的Class
       final Class<?> declaringClass = method.getDeclaringClass();
-      MappedStatement ms = resolveMappedStatement(mapperInterface, methodName, declaringClass,
-          configuration);
+      /**
+       * 解析 MappedStatement
+       *
+       * 根据String statementId = mapperInterface.getName() + "." + methodName;
+       * 从{@link Configuration#mappedStatements}中取
+       */
+      MappedStatement ms = resolveMappedStatement(mapperInterface, methodName, declaringClass, configuration);
+
+      // 检测当前方法是否有对应的 MappedStatement
       if (ms == null) {
+        // 检测当前方法是否有 @Flush 注解
         if (method.getAnnotation(Flush.class) != null) {
+          // 设置 name 和 type 遍历
           name = null;
           type = SqlCommandType.FLUSH;
         } else {
+          // 若 ms == null 且方法无 @Flush 注解，此时抛出异常，这个异常比较常见
           throw new BindingException("Invalid bound statement (not found): "
               + mapperInterface.getName() + "." + methodName);
         }
       } else {
+        // 设置 name 和 type 变量
         name = ms.getId();
         type = ms.getSqlCommandType();
         if (type == SqlCommandType.UNKNOWN) {
@@ -243,14 +318,17 @@ public class MapperMethod {
       return type;
     }
 
+
     private MappedStatement resolveMappedStatement(Class<?> mapperInterface, String methodName,
         Class<?> declaringClass, Configuration configuration) {
+
       String statementId = mapperInterface.getName() + "." + methodName;
       if (configuration.hasStatement(statementId)) {
         return configuration.getMappedStatement(statementId);
       } else if (mapperInterface.equals(declaringClass)) {
         return null;
       }
+
       for (Class<?> superInterface : mapperInterface.getInterfaces()) {
         if (declaringClass.isAssignableFrom(superInterface)) {
           MappedStatement ms = resolveMappedStatement(superInterface, methodName,
@@ -264,19 +342,47 @@ public class MapperMethod {
     }
   }
 
+  //该对象包含了被拦截方法的一些信息。比如目标方法的返回类型，目标方法的参数列表信息等。
   public static class MethodSignature {
 
+    //方法返回的集合或者是数组
     private final boolean returnsMany;
+
+    //@MapKey 注解内容是否为空
     private final boolean returnsMap;
+
+    //方法是否返回空（void）
     private final boolean returnsVoid;
+
+    //方法是否返回Cursor类型
     private final boolean returnsCursor;
+
+    //被代理方法的返回类型
     private final Class<?> returnType;
+
+    // @MapKey 注解内容
     private final String mapKey;
+
+    // 获取 ResultHandler 参数在参数列表中的位置
     private final Integer resultHandlerIndex;
+
+    // 获取 RowBounds 参数在参数列表中的位置
     private final Integer rowBoundsIndex;
+
+    // 解析参数列表
     private final ParamNameResolver paramNameResolver;
 
+    /**
+     * 用于检测目标方法的返回类型，以及解析目标方法参数列表。
+     * 其中，检测返回类型的目的是为避免查询方法返回错误的类型。比如我们要求接口方法返回一个对象，
+     * 结果却返回了对象集合，这会导致类型转换错误。
+     *
+     * @param configuration Mybatis全局配置文件
+     * @param mapperInterface Mapper接口的Class对象
+     * @param method 被代理的方法
+     */
     public MethodSignature(Configuration configuration, Class<?> mapperInterface, Method method) {
+      // 通过反射解析方法返回类型
       Type resolvedReturnType = TypeParameterResolver.resolveReturnType(method, mapperInterface);
       if (resolvedReturnType instanceof Class<?>) {
         this.returnType = (Class<?>) resolvedReturnType;
@@ -285,16 +391,26 @@ public class MapperMethod {
       } else {
         this.returnType = method.getReturnType();
       }
+
+      //方法是否返回空（void）
       this.returnsVoid = void.class.equals(this.returnType);
+      //方法返回的集合或者是数组
       this.returnsMany = configuration.getObjectFactory().isCollection(this.returnType) || this.returnType.isArray();
+      //方法是否返回Cursor类型
       this.returnsCursor = Cursor.class.equals(this.returnType);
+      // 解析 @MapKey 注解，获取注解内容
       this.mapKey = getMapKey(method);
+      //@MapKey 注解内容是否为空
       this.returnsMap = this.mapKey != null;
+      // 获取 RowBounds 参数在参数列表中的位置，如果参数列表中包含多个 RowBounds 参数，此方法会抛出异常
       this.rowBoundsIndex = getUniqueParamIndex(method, RowBounds.class);
+      // 获取 ResultHandler 参数在参数列表中的位置
       this.resultHandlerIndex = getUniqueParamIndex(method, ResultHandler.class);
+      // 解析参数列表
       this.paramNameResolver = new ParamNameResolver(configuration, method);
     }
 
+    //对用户传入的参数进行转换
     public Object convertArgsToSqlCommandParam(Object[] args) {
       return paramNameResolver.getNamedParams(args);
     }

@@ -51,8 +51,12 @@ public class TrimSqlNode implements SqlNode {
 
   @Override
   public boolean apply(DynamicContext context) {
+    // 创建具有过滤功能的 DynamicContext
     FilteredDynamicContext filteredDynamicContext = new FilteredDynamicContext(context);
+    // 解析节点内容
+    // 这步操作完成后，FilteredDynamicContext 中会得到一条 SQL 片段字符串。
     boolean result = contents.apply(filteredDynamicContext);
+    // 是过滤字符串前缀后和后缀，并添加相应的前缀和后缀。
     filteredDynamicContext.applyAll();
     return result;
   }
@@ -70,9 +74,13 @@ public class TrimSqlNode implements SqlNode {
   }
 
   private class FilteredDynamicContext extends DynamicContext {
+
     private DynamicContext delegate;
+
+    /** 构造方法会将下面两个布尔值置为 false */
     private boolean prefixApplied;
     private boolean suffixApplied;
+
     private StringBuilder sqlBuffer;
 
     public FilteredDynamicContext(DynamicContext delegate) {
@@ -84,12 +92,16 @@ public class TrimSqlNode implements SqlNode {
     }
 
     public void applyAll() {
+      // 1.首先从 sqlBuffer 中获取 SQL 字符串
       sqlBuffer = new StringBuilder(sqlBuffer.toString().trim());
       String trimmedUppercaseSql = sqlBuffer.toString().toUpperCase(Locale.ENGLISH);
       if (trimmedUppercaseSql.length() > 0) {
+        // 2.然后调用 applyPrefix 和 applySuffix 进行过滤操作。
         applyPrefix(sqlBuffer, trimmedUppercaseSql);
         applySuffix(sqlBuffer, trimmedUppercaseSql);
       }
+
+      // 3.将过滤后的 SQL 字符串添加到被装饰的类中
       delegate.appendSql(sqlBuffer.toString());
     }
 
@@ -120,15 +132,20 @@ public class TrimSqlNode implements SqlNode {
 
     private void applyPrefix(StringBuilder sql, String trimmedUppercaseSql) {
       if (!prefixApplied) {
+        // 设置 prefixApplied 为 true，以下逻辑仅会被执行一次
         prefixApplied = true;
         if (prefixesToOverride != null) {
           for (String toRemove : prefixesToOverride) {
+            // 1.检测 SQL 字符串是不是以"AND"，"OR"，或"AND\n"，"OR\n"等前缀开头
             if (trimmedUppercaseSql.startsWith(toRemove)) {
+              // 2.若是则将前缀从 sqlBuffer 中移除
               sql.delete(0, toRemove.trim().length());
               break;
             }
           }
         }
+
+        // 3.将前缀插入到 sqlBuffer 的首部，比如 WHERE
         if (prefix != null) {
           sql.insert(0, " ");
           sql.insert(0, prefix);
@@ -136,6 +153,7 @@ public class TrimSqlNode implements SqlNode {
       }
     }
 
+    // 该方法逻辑与 applyPrefix 大同小异
     private void applySuffix(StringBuilder sql, String trimmedUppercaseSql) {
       if (!suffixApplied) {
         suffixApplied = true;

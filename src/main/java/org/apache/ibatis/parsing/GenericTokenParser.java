@@ -17,6 +17,9 @@ package org.apache.ibatis.parsing;
 
 /**
  * @author Clinton Begin
+ *
+ * GenericTokenParser 是一个通用的标记解析器，用于解析形如${xxx}，#{xxx}等标记 。
+ * GenericTokenParser 负责将标记中的内容抽取出来，并将标记内容交给相应的 TokenHandler 去处理。
  */
 public class GenericTokenParser {
 

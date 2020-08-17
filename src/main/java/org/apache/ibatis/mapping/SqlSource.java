@@ -20,9 +20,14 @@ package org.apache.ibatis.mapping;
  * It creates the SQL that will be passed to the database out of the input parameter received from the user.
  *
  * @author Clinton Begin
+ *
+ * sql片段树，sql语句解析结果。
+ *
+ * 存储在 {@link MappedStatement#sqlSource} 中
  */
 public interface SqlSource {
 
+  //根据sql片段树生成具体的sql语句
   BoundSql getBoundSql(Object parameterObject);
 
 }

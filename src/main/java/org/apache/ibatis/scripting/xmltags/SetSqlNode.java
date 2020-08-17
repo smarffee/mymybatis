@@ -27,6 +27,7 @@ public class SetSqlNode extends TrimSqlNode {
 
   private static List<String> suffixList = Arrays.asList(",");
 
+  //在 MyBatis 中，WhereSqlNode 和 SetSqlNode 都是基于 TrimSqlNode 实现的，所以代码看起来很简单
   public SetSqlNode(Configuration configuration,SqlNode contents) {
     super(configuration, contents, "SET", null, null, suffixList);
   }

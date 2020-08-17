@@ -31,13 +31,18 @@ import org.apache.ibatis.session.RowBounds;
 
 /**
  * @author Clinton Begin
+ *
+ * 代理了SimpleStatementHandler、PreparedStatementHandler、CallableStatementHandler
  */
 public class RoutingStatementHandler implements StatementHandler {
 
   private final StatementHandler delegate;
 
+  //根据 MappedStatement 中的 statementType 变量创建不同的 StatementHandler 实现类。
   public RoutingStatementHandler(Executor executor, MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql) {
 
+    // 根据 StatementType 创建不同的 StatementHandler
+    // 默认情况下，statementType 值为 PREPARED。
     switch (ms.getStatementType()) {
       case STATEMENT:
         delegate = new SimpleStatementHandler(executor, ms, parameter, rowBounds, resultHandler, boundSql);

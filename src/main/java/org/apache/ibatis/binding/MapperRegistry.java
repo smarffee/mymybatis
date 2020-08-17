@@ -37,21 +37,33 @@ public class MapperRegistry {
 
   private final Configuration config;
 
-  //保存mapper接口注册信息
-  //key:Mapper接口；value:Mapper接口代理对象
+  /**
+   * 保存mapper接口注册信息
+   * key:Mapper接口；value:Mapper接口代理对象工厂类
+   *
+   * MyBatis 在解析配置文件的<mappers>节点的过程中，
+   * 会调用MapperRegistry 的 addMapper 方法{@link MapperRegistry#addMapper(java.lang.Class)}，
+   * 将 Class 到 MapperProxyFactory 对象的映射关系存入到knownMappers
+   */
   private final Map<Class<?>, MapperProxyFactory<?>> knownMappers = new HashMap<Class<?>, MapperProxyFactory<?>>();
 
   public MapperRegistry(Configuration config) {
     this.config = config;
   }
 
+  //根据接口Class获取接口的代理类
   @SuppressWarnings("unchecked")
   public <T> T getMapper(Class<T> type, SqlSession sqlSession) {
+    // 从 knownMappers 中获取与 type 对应的 MapperProxyFactory
     final MapperProxyFactory<T> mapperProxyFactory = (MapperProxyFactory<T>) knownMappers.get(type);
+
     if (mapperProxyFactory == null) {
       throw new BindingException("Type " + type + " is not known to the MapperRegistry.");
     }
+
     try {
+      // 创建代理对象
+      // 在获取到 MapperProxyFactory 对象后，即可调用工厂方法为 Mapper 接口生成代理对象了。
       return mapperProxyFactory.newInstance(sqlSession);
     } catch (Exception e) {
       throw new BindingException("Error getting mapper instance. Cause: " + e, e);

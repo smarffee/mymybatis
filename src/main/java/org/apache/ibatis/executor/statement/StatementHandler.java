@@ -27,26 +27,28 @@ import org.apache.ibatis.session.ResultHandler;
 
 /**
  * @author Clinton Begin
+ *
+ * 在 MyBatis 的源码中，StatementHandler 是一个非常核心接口。
+ * 之所以说它核心，是因为从代码分层的角度来说，StatementHandler 是 MyBatis 源码的边界，再往下层就是 JDBC 层面的接口了。
+ * StatementHandler 需要和 JDBC 层面的接口打交道，它要做的事情有很多。
+ * 在执行 SQL 之前，StatementHandler 需要创建合适的 Statement 对象，然后填充参数值到Statement 对象中，最后通过 Statement 对象执行 SQL。
+ * 这还不算完，待 SQL 执行完毕，还要去处理查询结果等。这
  */
 public interface StatementHandler {
 
-  Statement prepare(Connection connection, Integer transactionTimeout)
-      throws SQLException;
+  //创建java.sql.Statement
+  Statement prepare(Connection connection, Integer transactionTimeout) throws SQLException;
 
-  void parameterize(Statement statement)
-      throws SQLException;
+  // 为 Statement 设置 IN 参数
+  void parameterize(Statement statement) throws SQLException;
 
-  void batch(Statement statement)
-      throws SQLException;
+  void batch(Statement statement) throws SQLException;
 
-  int update(Statement statement)
-      throws SQLException;
+  int update(Statement statement) throws SQLException;
 
-  <E> List<E> query(Statement statement, ResultHandler resultHandler)
-      throws SQLException;
+  <E> List<E> query(Statement statement, ResultHandler resultHandler) throws SQLException;
 
-  <E> Cursor<E> queryCursor(Statement statement)
-      throws SQLException;
+  <E> Cursor<E> queryCursor(Statement statement) throws SQLException;
 
   BoundSql getBoundSql();
 

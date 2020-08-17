@@ -28,6 +28,9 @@ import org.apache.ibatis.session.Configuration;
 
 /**
  * @author Clinton Begin
+ *
+ * 是 SQL 语句构建的上下文，每个 SQL 片段解析完成后，都会将解析结果存入 DynamicContext 中。
+ * 待所有的 SQL 片段解析完毕后，一条完整的 SQL 语句就会出现在 DynamicContext 对象中。
  */
 public class DynamicContext {
 
@@ -38,17 +41,25 @@ public class DynamicContext {
     OgnlRuntime.setPropertyAccessor(ContextMap.class, new ContextAccessor());
   }
 
+  //则用于存储一些额外的信息，比如运行时参数和 databaseId 等。
+  //继承自 HashMap，并覆写了 get 方法
   private final ContextMap bindings;
+
+  //用于存放 SQL 片段的解析结果，最终是一个完整的sql
   private final StringBuilder sqlBuilder = new StringBuilder();
+
   private int uniqueNumber = 0;
 
   public DynamicContext(Configuration configuration, Object parameterObject) {
+    // 创建 ContextMap
     if (parameterObject != null && !(parameterObject instanceof Map)) {
       MetaObject metaObject = configuration.newMetaObject(parameterObject);
       bindings = new ContextMap(metaObject);
     } else {
       bindings = new ContextMap(null);
     }
+
+    // 存放运行时参数 parameterObject 以及 databaseId
     bindings.put(PARAMETER_OBJECT_KEY, parameterObject);
     bindings.put(DATABASE_ID_KEY, configuration.getDatabaseId());
   }
@@ -61,11 +72,13 @@ public class DynamicContext {
     bindings.put(name, value);
   }
 
+  //用于操作 sqlBuilder
   public void appendSql(String sql) {
     sqlBuilder.append(sql);
     sqlBuilder.append(" ");
   }
 
+  //用于操作 sqlBuilder
   public String getSql() {
     return sqlBuilder.toString().trim();
   }
@@ -85,11 +98,14 @@ public class DynamicContext {
     @Override
     public Object get(Object key) {
       String strKey = (String) key;
+
+      // 检查是否包含 strKey，若包含则直接返回
       if (super.containsKey(strKey)) {
         return super.get(strKey);
       }
 
       if (parameterMetaObject != null) {
+        // 从运行时参数中查找结果
         // issue #61 do not modify the context when reading
         return parameterMetaObject.getValue(strKey);
       }

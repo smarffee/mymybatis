@@ -17,6 +17,7 @@ package org.apache.ibatis.mapping;
 
 import java.sql.ResultSet;
 
+import org.apache.ibatis.reflection.ParamNameResolver;
 import org.apache.ibatis.session.Configuration;
 import org.apache.ibatis.type.JdbcType;
 import org.apache.ibatis.type.TypeHandler;
@@ -24,15 +25,65 @@ import org.apache.ibatis.type.TypeHandlerRegistry;
 
 /**
  * @author Clinton Begin
+ *
+ * 假设我们有这样一条 SQL 语句：
+ *
+ * SELECT * FROM author WHERE name = #{name} AND age = #{age}
+ *
+ * 这个 SQL 语句中包含两个#{}占位符，在运行时这两个占位符会被解析成两个 ParameterMapping 对象。如下：
+ * ParameterMapping{property='name', mode=IN, javaType=class java.lang.String,  jdbcType=null, ...}
+ * ParameterMapping{property='age',  mode=IN, javaType=class java.lang.Integer, jdbcType=null, ...}
+ *
+ * #{xxx}占位符解析完毕后，得到的 SQL 如下：
+ *
+ * SELECT * FROM Author WHERE name = ? AND age = ?
+ *
+ * 这里假设下面这个方法与上面的 SQL 对应：
+ *
+ * Author findByNameAndAge(@Param("name")String name, @Param("age")Integer　age)
+ *
+ * 该方法的参数列表会被 ParamNameResolver 解析成一个 map，如下：
+ * {
+ *    0: "name",
+ *    1: "age"
+ * }
+ *
+ * 假设该方法在运行时有如下的调用：
+ *
+ * findByNameAndAge("zhangsan", 20)
+ *
+ * 此时，需要再次借助 {@link ParamNameResolver} 的力量。这次我们将参数名和运行时的参数值绑定起来，得到如下的映射关系。
+ * {
+ *    "name": "zhangsan",
+ *    "age": 20,
+ *    "param1": "zhangsan",
+ *    "param2": 20
+ * }
+ *
+ * 下一步，我们要将运行时参数设置到 SQL 中。由于原 SQL 经过解析后，占位符信息已经被擦除掉了，我们无法直接将运行时参数绑定到 SQL 中。
+ * 不过好在，这些占位符信息被记录在了 ParameterMapping 中了。MyBatis 会将 ParameterMapping 会按照#{}占位符的解析顺序存入到 List 中。
+ * 这样我们通过 ParameterMapping 在列表中的位置确定它与 SQL 中的哪一个 ? 占位符相关联。
+ * 同时通过 ParameterMapping 中的 property 字段，我们可以到“参数名与参数值”映射表中查找具体的参数值。
+ * 这样，我们就可以将参数值准确的设置到 SQL 中了，此时SQL 如下：
+ *
+ * SELECT * FROM Author WHERE name = "zhangsan" AND age = 20
+ *
  */
 public class ParameterMapping {
 
   private Configuration configuration;
 
+  //#{xxx}占位符中的属性名
   private String property;
+
   private ParameterMode mode;
+
+  //#{xxx}占位符中的属性对应的Java类型
   private Class<?> javaType = Object.class;
+
+  //#{xxx}占位符中的属性对应的数据库字段类型
   private JdbcType jdbcType;
+
   private Integer numericScale;
   private TypeHandler<?> typeHandler;
   private String resultMapId;

@@ -54,14 +54,22 @@ public class SimpleExecutor extends BaseExecutor {
   }
 
   @Override
-  public <E> List<E> doQuery(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql) throws SQLException {
+  public <E> List<E> doQuery(MappedStatement ms, Object parameter,
+                             RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql) throws SQLException {
     Statement stmt = null;
     try {
       Configuration configuration = ms.getConfiguration();
+
+      // 创建 StatementHandler
       StatementHandler handler = configuration.newStatementHandler(wrapper, ms, parameter, rowBounds, resultHandler, boundSql);
+
+      // 创建 jdbc Statement
       stmt = prepareStatement(handler, ms.getStatementLog());
+
+      // 执行查询操作
       return handler.<E>query(stmt, resultHandler);
     } finally {
+      // 关闭 Statement
       closeStatement(stmt);
     }
   }
@@ -79,10 +87,14 @@ public class SimpleExecutor extends BaseExecutor {
     return Collections.emptyList();
   }
 
+  //创建java.sql.Statement
   private Statement prepareStatement(StatementHandler handler, Log statementLog) throws SQLException {
     Statement stmt;
+    // 获取数据库连接
     Connection connection = getConnection(statementLog);
+    // 创建 Statement
     stmt = handler.prepare(connection, transaction.getTimeout());
+    // 为 Statement 设置 IN 参数
     handler.parameterize(stmt);
     return stmt;
   }

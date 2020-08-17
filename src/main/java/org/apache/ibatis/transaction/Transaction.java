@@ -30,6 +30,8 @@ public interface Transaction {
    * Retrieve inner database connection
    * @return DataBase connection
    * @throws SQLException
+   *
+   * 获取数据库连接
    */
   Connection getConnection() throws SQLException;
 
