@@ -137,19 +137,31 @@ public class ResultSetWrapper {
     return null;
   }
 
+  // 加载已映射与未映射列名
   private void loadMappedAndUnmappedColumnNames(ResultMap resultMap, String columnPrefix) throws SQLException {
+
     List<String> mappedColumnNames = new ArrayList<String>();
     List<String> unmappedColumnNames = new ArrayList<String>();
     final String upperColumnPrefix = columnPrefix == null ? null : columnPrefix.toUpperCase(Locale.ENGLISH);
+
+    // 获取<resultMap>中配置的列名集合，为 <resultMap> 中的列名拼接前缀
     final Set<String> mappedColumns = prependPrefixes(resultMap.getMappedColumns(), upperColumnPrefix);
+
+    // 遍历数据集中的列名集合 columnNames，columnNames 是 ResultSetWrapper 的成员变量，保存了当前结果集中的所有列名
     for (String columnName : columnNames) {
       final String upperColumnName = columnName.toUpperCase(Locale.ENGLISH);
+
+      // 检测已映射列名集合中是否包含当前列名
+      // 判断列名是否被配置在了<resultMap>节点中
       if (mappedColumns.contains(upperColumnName)) {
         mappedColumnNames.add(upperColumnName);
       } else {
+        // 将列名存入 unmappedColumnNames 中
         unmappedColumnNames.add(columnName);
       }
     }
+
+    // 缓存列名集合
     mappedColumnNamesMap.put(getMapKey(resultMap, columnPrefix), mappedColumnNames);
     unMappedColumnNamesMap.put(getMapKey(resultMap, columnPrefix), unmappedColumnNames);
   }
@@ -163,10 +175,13 @@ public class ResultSetWrapper {
     return mappedColumnNames;
   }
 
+  //从 ResultSetWrapper 中获取未配置在 <resultMap> 中的列名
   public List<String> getUnmappedColumnNames(ResultMap resultMap, String columnPrefix) throws SQLException {
     List<String> unMappedColumnNames = unMappedColumnNamesMap.get(getMapKey(resultMap, columnPrefix));
     if (unMappedColumnNames == null) {
+      // 加载已映射与未映射列名
       loadMappedAndUnmappedColumnNames(resultMap, columnPrefix);
+      // 获取未映射列名
       unMappedColumnNames = unMappedColumnNamesMap.get(getMapKey(resultMap, columnPrefix));
     }
     return unMappedColumnNames;

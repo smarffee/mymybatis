@@ -21,7 +21,7 @@ import java.util.Properties;
 /**
  * MyBatis uses an ObjectFactory to create all needed new Objects.
  *
- * 工厂类
+ * 结果集对象的工厂类
  * 
  * @author Clinton Begin
  */
@@ -34,7 +34,10 @@ public interface ObjectFactory {
   void setProperties(Properties properties);
 
   /**
-   * Creates a new object with default constructor. 
+   * Creates a new object with default constructor.
+   *
+   * 创建一个结果集对象
+   *
    * @param type Object type
    * @return
    */

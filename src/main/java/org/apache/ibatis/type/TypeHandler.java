@@ -30,10 +30,13 @@ public interface TypeHandler<T> {
 
   void setParameter(PreparedStatement ps, int i, T parameter, JdbcType jdbcType) throws SQLException;
 
+  //根据查询结果集字段值获取JavaBean属性值
   T getResult(ResultSet rs, String columnName) throws SQLException;
 
+  //根据查询结果集字段值获取JavaBean属性值
   T getResult(ResultSet rs, int columnIndex) throws SQLException;
 
+  //根据查询结果集字段值获取JavaBean属性值
   T getResult(CallableStatement cs, int columnIndex) throws SQLException;
 
 }

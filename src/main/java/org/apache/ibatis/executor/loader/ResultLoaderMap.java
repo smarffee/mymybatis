@@ -50,12 +50,16 @@ public class ResultLoaderMap {
   private final Map<String, LoadPair> loaderMap = new HashMap<String, LoadPair>();
 
   public void addLoader(String property, MetaObject metaResultObject, ResultLoader resultLoader) {
+    // 将属性名转为大写
     String upperFirst = getUppercaseFirstProperty(property);
+
     if (!upperFirst.equalsIgnoreCase(property) && loaderMap.containsKey(upperFirst)) {
       throw new ExecutorException("Nested lazy loaded result property '" + property +
               "' for query id '" + resultLoader.mappedStatement.getId() +
               " already exists in the result map. The leftmost property of all lazy loaded properties must be unique within a result map.");
     }
+
+    // 创建 LoadPair，并将 <大写属性名，LoadPair 对象> 键值对添加到 loaderMap 中
     loaderMap.put(upperFirst, new LoadPair(property, metaResultObject, resultLoader));
   }
 

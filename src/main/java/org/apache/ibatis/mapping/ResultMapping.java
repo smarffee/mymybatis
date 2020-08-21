@@ -29,7 +29,7 @@ import org.apache.ibatis.type.TypeHandlerRegistry;
  * @author Clinton Begin
  *
  * resultMap的子节点<id>、<result>等解析结果
- * 当个字段对应的配置解析结果
+ * 单个字段对应的配置解析结果
  */
 public class ResultMapping {
 

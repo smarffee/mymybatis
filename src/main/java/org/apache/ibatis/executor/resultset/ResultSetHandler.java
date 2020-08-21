@@ -27,6 +27,7 @@ import java.util.List;
  */
 public interface ResultSetHandler {
 
+  //处理查询结果集
   <E> List<E> handleResultSets(Statement stmt) throws SQLException;
 
   <E> Cursor<E> handleCursorResultSets(Statement stmt) throws SQLException;

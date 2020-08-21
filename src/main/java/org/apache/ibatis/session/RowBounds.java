@@ -20,8 +20,12 @@ package org.apache.ibatis.session;
  */
 public class RowBounds {
 
+  //结果集处理偏移量。忽略结果集中前多少行
   public static final int NO_ROW_OFFSET = 0;
+
+  //结果集处理行数上限
   public static final int NO_ROW_LIMIT = Integer.MAX_VALUE;
+
   public static final RowBounds DEFAULT = new RowBounds();
 
   private final int offset;

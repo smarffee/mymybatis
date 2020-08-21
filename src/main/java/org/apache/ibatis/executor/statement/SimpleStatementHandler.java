@@ -67,10 +67,14 @@ public class SimpleStatementHandler extends BaseStatementHandler {
     statement.addBatch(sql);
   }
 
+  // 执行查询操作
   @Override
   public <E> List<E> query(Statement statement, ResultHandler resultHandler) throws SQLException {
+    //获取要执行的sql
     String sql = boundSql.getSql();
+    //执行sql
     statement.execute(sql);
+    //处理查询结果集
     return resultSetHandler.<E>handleResultSets(statement);
   }
 

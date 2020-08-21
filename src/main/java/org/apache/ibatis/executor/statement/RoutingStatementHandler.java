@@ -79,8 +79,10 @@ public class RoutingStatementHandler implements StatementHandler {
     return delegate.update(statement);
   }
 
+  // 执行查询操作
   @Override
   public <E> List<E> query(Statement statement, ResultHandler resultHandler) throws SQLException {
+    // 执行查询操作
     return delegate.<E>query(statement, resultHandler);
   }
 
