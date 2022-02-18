@@ -188,34 +188,62 @@ public class UnpooledDataSource implements DataSource {
       props.putAll(driverProperties);
     }
     if (username != null) {
+      // 存储 user 配置
       props.setProperty("user", username);
     }
     if (password != null) {
+      // 存储 password 配置
       props.setProperty("password", password);
     }
+
+    // 调用重载方法
     return doGetConnection(props);
   }
 
   private Connection doGetConnection(Properties properties) throws SQLException {
+    // 初始化驱动
     initializeDriver();
+    // 获取连接
     Connection connection = DriverManager.getConnection(url, properties);
+    // 配置连接，包括自动ᨀ交以及事务等级
     configureConnection(connection);
     return connection;
   }
 
+  /**
+   * 初始化驱动方法主要包含三步操作，分别如下：
+   * 1. 加载驱动
+   * 2. 通过反射创建驱动实例
+   * 3. 注册驱动实例
+   *
+   * @throws SQLException
+   */
   private synchronized void initializeDriver() throws SQLException {
+    /*
+     * 检测缓存中是否包含了与 driver 对应的驱动实例, 避免重复注册驱动。
+     * 因为 initializeDriver 方法并不是在 UnpooledDataSource 初始化时被调用的，
+     * 而是在获取数据库连接时被调用的。可能多个线程同时一起获取数据库连接。
+     * 因此这里需要做个检测，避免每次获取数据库连接时都重新注册驱动。
+     */
     if (!registeredDrivers.containsKey(driver)) {
       Class<?> driverType;
       try {
+        // 加载驱动类型
         if (driverClassLoader != null) {
+          // 使用 driverClassLoader 加载驱动
           driverType = Class.forName(driver, true, driverClassLoader);
         } else {
+          // 通过其他 ClassLoader 加载驱动
           driverType = Resources.classForName(driver);
         }
         // DriverManager requires the driver to be loaded via the system ClassLoader.
         // http://www.kfu.com/~nsayer/Java/dyn-jdbc.html
+        // 通过反射创建驱动实例
         Driver driverInstance = (Driver)driverType.newInstance();
+        // 注册驱动，注意这里是将 Driver 代理类 DriverProxy 对象注册到
+        // 而非 Driver 对象本身。DriverProxy 中并没什么特别的逻辑，就不分析。
         DriverManager.registerDriver(new DriverProxy(driverInstance));
+        // 缓存驱动类名和实例
         registeredDrivers.put(driver, driverInstance);
       } catch (Exception e) {
         throw new SQLException("Error setting driver on UnpooledDataSource. Cause: " + e);
@@ -225,9 +253,11 @@ public class UnpooledDataSource implements DataSource {
 
   private void configureConnection(Connection conn) throws SQLException {
     if (autoCommit != null && autoCommit != conn.getAutoCommit()) {
+      // 设置自动提交
       conn.setAutoCommit(autoCommit);
     }
     if (defaultTransactionIsolationLevel != null) {
+      // 设置事务隔离级别
       conn.setTransactionIsolation(defaultTransactionIsolationLevel);
     }
   }

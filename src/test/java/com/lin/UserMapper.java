@@ -13,21 +13,14 @@
  *    See the License for the specific language governing permissions and
  *    limitations under the License.
  */
-package org.apache.ibatis.mapping;
+package com.lin;
 
-/**
- * Represents the content of a mapped statement read from an XML file or an annotation. 
- * It creates the SQL that will be passed to the database out of the input parameter received from the user.
- *
- * @author Clinton Begin
- *
- * sql片段树，sql语句解析结果。
- *
- * 存储在 {@link MappedStatement#sqlSource} 中
- */
-public interface SqlSource {
+import org.apache.ibatis.annotations.Param;
 
-  //根据sql片段树生成具体的sql语句
-  BoundSql getBoundSql(Object parameterObject);
+import java.util.List;
+
+public interface UserMapper {
+
+    User selectById(@Param("_idList") List<Integer> idList, @Param("_age") int age);
 
 }

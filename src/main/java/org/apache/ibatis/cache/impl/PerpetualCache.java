@@ -1,5 +1,5 @@
 /**
- *    Copyright 2009-2017 the original author or authors.
+ *    Copyright 2009-2022 the original author or authors.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import org.apache.ibatis.cache.CacheException;
 
 /**
  * @author Clinton Begin
+ * 具有基本缓存功能
  */
 public class PerpetualCache implements Cache {
 
@@ -47,16 +48,19 @@ public class PerpetualCache implements Cache {
 
   @Override
   public void putObject(Object key, Object value) {
+    // 存储键值对到 HashMap
     cache.put(key, value);
   }
 
   @Override
   public Object getObject(Object key) {
+    // 查找缓存项
     return cache.get(key);
   }
 
   @Override
   public Object removeObject(Object key) {
+    // 移除缓存项
     return cache.remove(key);
   }
 
