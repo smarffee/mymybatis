@@ -56,6 +56,8 @@ public final class MappedStatement {
   private SqlSource sqlSource;
 
   //二级缓存
+  //由于 MappedStatement 存在于全局配置中，可以被多个 CachingExecutor 获取到，这样就会出现线程安全问题。
+  //除此之外，若不加以控制，多个事务共用一个缓存实例，会导致脏读问题。
   private Cache cache;
 
   private ParameterMap parameterMap;

@@ -136,6 +136,7 @@ public abstract class BaseExecutor implements Executor {
   @Override
   public <E> List<E> query(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler) throws SQLException {
     BoundSql boundSql = ms.getBoundSql(parameter);
+    // 创建 CacheKey
     CacheKey key = createCacheKey(ms, parameter, rowBounds, boundSql);
     return query(ms, parameter, rowBounds, resultHandler, key, boundSql);
  }
@@ -209,22 +210,41 @@ public abstract class BaseExecutor implements Executor {
     }
   }
 
+  /**
+   * 在计算 CacheKey 的过程中，有很多影响因子参与了计算。
+   * 比如 MappedStatement 的 id 字段，SQL 语句，分页参数，运行时变量，Environment 的 id 字段等。
+   * 通过让这些影响因子参与计算，可以很好的区分不同查询请求。
+   * 所以，我们可以简单的把 CacheKey 看做是一个查询请求的 id。
+   *
+   * @param ms
+   * @param parameterObject
+   * @param rowBounds
+   * @param boundSql
+   * @return
+   */
   @Override
   public CacheKey createCacheKey(MappedStatement ms, Object parameterObject, RowBounds rowBounds, BoundSql boundSql) {
     if (closed) {
       throw new ExecutorException("Executor was closed.");
     }
+    // 创建 CacheKey 对象
     CacheKey cacheKey = new CacheKey();
+    // 将 MappedStatement 的 id 作为影响因子进行计算
     cacheKey.update(ms.getId());
+    // RowBounds 用于分页查询，下面将它的两个字段作为影响因子进行计算
     cacheKey.update(rowBounds.getOffset());
     cacheKey.update(rowBounds.getLimit());
+    // 获取 sql 语句，并进行计算
     cacheKey.update(boundSql.getSql());
     List<ParameterMapping> parameterMappings = boundSql.getParameterMappings();
     TypeHandlerRegistry typeHandlerRegistry = ms.getConfiguration().getTypeHandlerRegistry();
+
+
     // mimic DefaultParameterHandler logic
     for (ParameterMapping parameterMapping : parameterMappings) {
       if (parameterMapping.getMode() != ParameterMode.OUT) {
         Object value;
+        // 当前大段代码用于获取 SQL 中的占位符 #{xxx} 对应的运行时参数，
         String propertyName = parameterMapping.getProperty();
         if (boundSql.hasAdditionalParameter(propertyName)) {
           value = boundSql.getAdditionalParameter(propertyName);
@@ -236,11 +256,13 @@ public abstract class BaseExecutor implements Executor {
           MetaObject metaObject = configuration.newMetaObject(parameterObject);
           value = metaObject.getValue(propertyName);
         }
+        // 让运行时参数参与计算
         cacheKey.update(value);
       }
     }
     if (configuration.getEnvironment() != null) {
       // issue #176
+      // 获取 Environment id 遍历，并让其参与计算
       cacheKey.update(configuration.getEnvironment().getId());
     }
     return cacheKey;

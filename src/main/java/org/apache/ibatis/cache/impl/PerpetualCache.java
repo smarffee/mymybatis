@@ -23,6 +23,7 @@ import org.apache.ibatis.cache.Cache;
 import org.apache.ibatis.cache.CacheException;
 
 /**
+ * 一级缓存，会在 MyBatis 执行更新操作（INSERT/UPDATE/DELETE），以及提交和回滚事务时被清空
  * @author Clinton Begin
  * 具有基本缓存功能
  */

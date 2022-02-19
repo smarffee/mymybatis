@@ -100,19 +100,28 @@ public class CachingExecutor implements Executor {
   public <E> List<E> query(MappedStatement ms, Object parameterObject,
                            RowBounds rowBounds, ResultHandler resultHandler,
                            CacheKey key, BoundSql boundSql) throws SQLException {
-    // 从 MappedStatement 中获取缓存
+    /*
+     * 从 MappedStatement 中获取 Cache，注意这里的 Cache 并非是在 CachingExecutor 中创建的
+     * 由于 MappedStatement 存在于全局配置中，可以被多个 CachingExecutor 获取到，这样就会出线程安全问题。
+     * 除此之外，若不加以控制，多个事务共用一个缓存实例，会导致脏读问题。
+     * 线程安全问题可以通过 SynchronizedCache 装饰类解决，该装饰类会在 Cache 实例构造期间被添加上。
+     * 至于脏读问题，需要借助其他类来处理，也就是上面代码中 tcm 变量对应的类型。
+     */
     Cache cache = ms.getCache();
     // 若二级缓存为空，或未命中
     // 若映射文件中未配置缓存或参照缓存，此时 cache = null
+    // 如果配置文件中没有配置 <cache>，则 cache 为空
     if (cache != null) {
       flushCacheIfRequired(ms);
       if (ms.isUseCache() && resultHandler == null) {
         ensureNoOutParams(ms, boundSql);
         @SuppressWarnings("unchecked")
+        // 访问二级缓存
         List<E> list = (List<E>) tcm.getObject(cache, key);
         if (list == null) {
           // 若缓存未命中，则调用被装饰类的 query 方法
           list = delegate.<E> query(ms, parameterObject, rowBounds, resultHandler, key, boundSql);
+          // 缓存查询结果
           tcm.putObject(cache, key, list); // issue #578 and #116
         }
         return list;
