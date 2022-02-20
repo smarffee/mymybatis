@@ -50,6 +50,7 @@ public class Jdbc3KeyGenerator implements KeyGenerator {
   @Override
   public void processBefore(Executor executor, MappedStatement ms, Statement stmt, Object parameter) {
     // do nothing
+    // 空方法
   }
 
   @Override
@@ -57,25 +58,51 @@ public class Jdbc3KeyGenerator implements KeyGenerator {
     processBatch(ms, stmt, getParameters(parameter));
   }
 
+  /**
+   * 由于存在批量插入的情况，所以该方法的名字类包含 batch 单词，表示可处理批量插入的结果集。
+   * 主要流程如下：
+   * 1. 获取主键数组(keyProperties)
+   * 2. 获取 ResultSet 元数据
+   * 3. 遍历参数列表，为每个主键属性获取 TypeHandler
+   * 4. 从 ResultSet 中获取主键数据，并填充到参数中
+   *
+   * @param ms
+   * @param stmt
+   * @param parameters
+   */
   public void processBatch(MappedStatement ms, Statement stmt, Collection<Object> parameters) {
     ResultSet rs = null;
     try {
       rs = stmt.getGeneratedKeys();
       final Configuration configuration = ms.getConfiguration();
       final TypeHandlerRegistry typeHandlerRegistry = configuration.getTypeHandlerRegistry();
+
+      // 获取主键字段
       final String[] keyProperties = ms.getKeyProperties();
+
+      // 获取结果集 ResultSet 的元数据
       final ResultSetMetaData rsmd = rs.getMetaData();
       TypeHandler<?>[] typeHandlers = null;
+
+      // ResultSet 中数据的列数要大于等于主键的数量
       if (keyProperties != null && rsmd.getColumnCount() >= keyProperties.length) {
+
+        // 遍历 parameters
         for (Object parameter : parameters) {
           // there should be one row for each statement (also one for each parameter)
+          // 对于批量插入，ResultSet 会返回多行数据
           if (!rs.next()) {
             break;
           }
+
           final MetaObject metaParam = configuration.newMetaObject(parameter);
+
           if (typeHandlers == null) {
+            // 为每个主键属性获取 TypeHandler
             typeHandlers = getTypeHandlers(typeHandlerRegistry, metaParam, keyProperties, rsmd);
           }
+
+          // 填充结果到运行时参数中
           populateKeys(rs, metaParam, keyProperties, typeHandlers);
         }
       }
@@ -98,6 +125,10 @@ public class Jdbc3KeyGenerator implements KeyGenerator {
       parameters = (Collection) parameter;
     } else if (parameter instanceof Map) {
       Map parameterMap = (Map) parameter;
+
+      // 如果 parameter 是 Map 类型，则从其中ᨀ取指定 key 对应的值。
+      // 至于 Map 中为什么会出现 collection/list/array 等键。大家
+      // 可以参考 DefaultSqlSession 的 wrapCollection 方法
       if (parameterMap.containsKey("collection")) {
         parameters = (Collection) parameterMap.get("collection");
       } else if (parameterMap.containsKey("list")) {
@@ -108,6 +139,7 @@ public class Jdbc3KeyGenerator implements KeyGenerator {
     }
     if (parameters == null) {
       parameters = new ArrayList<Object>();
+      // 将普通的对象添加到 parameters 中
       parameters.add(parameter);
     }
     return parameters;
@@ -130,12 +162,26 @@ public class Jdbc3KeyGenerator implements KeyGenerator {
     return typeHandlers;
   }
 
+  /**
+   * 首先是遍历主键数组，然后通过 TypeHandler 从 ResultSet 中获取自增主键的值，
+   * 最后再通过元信息对象将自增主键的值设置到参数中。
+   *
+   * @param rs
+   * @param metaParam
+   * @param keyProperties
+   * @param typeHandlers
+   * @throws SQLException
+   */
   private void populateKeys(ResultSet rs, MetaObject metaParam, String[] keyProperties, TypeHandler<?>[] typeHandlers) throws SQLException {
+    // 遍历 keyProperties
     for (int i = 0; i < keyProperties.length; i++) {
+      // 获取主键属性
       String property = keyProperties[i];
       TypeHandler<?> th = typeHandlers[i];
       if (th != null) {
+        // 从 ResultSet 中获取某列的值
         Object value = th.getResult(rs, i + 1);
+        // 设置结果值到运行时参数中
         metaParam.setValue(property, value);
       }
     }

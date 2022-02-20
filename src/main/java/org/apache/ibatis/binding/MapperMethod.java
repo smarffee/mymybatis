@@ -40,7 +40,7 @@ import java.util.*;
  * @author Eduardo Macarron
  * @author Lasse Voss
  *
- * Mapper接口方法的实际方法体，调用Mapper对象的invoke方法，
+ * Mapper接口方法的实际方法体，调用MapperProxy对象的invoke方法，
  * 最终会调用本类中{@link MapperMethod#execute(org.apache.ibatis.session.SqlSession, java.lang.Object[])}方法取真正的执行sql
  */
 public class MapperMethod {

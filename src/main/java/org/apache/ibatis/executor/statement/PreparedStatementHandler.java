@@ -43,11 +43,21 @@ public class PreparedStatementHandler extends BaseStatementHandler {
   @Override
   public int update(Statement statement) throws SQLException {
     PreparedStatement ps = (PreparedStatement) statement;
+
+    // 执行 SQL
     ps.execute();
+
+    // 返回受影响行数
     int rows = ps.getUpdateCount();
+
+    // 获取用户传入的参数值，参数值类型可能是普通的实体类，也可能是 Map
     Object parameterObject = boundSql.getParameterObject();
+
     KeyGenerator keyGenerator = mappedStatement.getKeyGenerator();
+
+    // 获取自增主键的值，并将值填入到参数对象中
     keyGenerator.processAfter(executor, mappedStatement, ps, parameterObject);
+
     return rows;
   }
 
@@ -76,6 +86,7 @@ public class PreparedStatementHandler extends BaseStatementHandler {
   // 创建 Statement
   @Override
   protected Statement instantiateStatement(Connection connection) throws SQLException {
+    //获取Sql语句
     String sql = boundSql.getSql();
     // 根据条件调用不同的 prepareStatement 方法创建 PreparedStatement
     if (mappedStatement.getKeyGenerator() instanceof Jdbc3KeyGenerator) {
